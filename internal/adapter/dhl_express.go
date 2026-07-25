@@ -29,7 +29,13 @@ import (
 // The DispatchConfirmationNumber in BookingResponse can be used with
 // DELETE /pickups/{id} to cancel the courier collection independently.
 //
-// Update: Not supported — no general update shipment endpoint in the API.
+// Update: Partial. There is no general update endpoint, but
+// PATCH /shipments/{id}/add-piece lets a caller add a new package to a
+// shipment before it has been picked up — set UpdateRequest.AddPiece. DHL
+// gates access to this endpoint per account; contact your DHL Express
+// representative if it is rejected. Any other UpdateRequest field (contact
+// details, weight, service point) is not supported — DHL recommends
+// cancelling and rebooking for changes beyond adding a piece.
 type DHLExpressAdapter struct {
 	// Username is the MyDHL API Basic Auth username.
 	Username string
@@ -728,7 +734,93 @@ func (a *DHLExpressAdapter) CancelShipment(_ context.Context, _ string) (*Cancel
 	return nil, notSupported("DHL Express", "cancel shipment", "no void AWB endpoint; use DispatchConfirmationNumber to cancel the pickup booking via DELETE /pickups/{id}")
 }
 
-// UpdateShipment is not supported for DHL Express — no general update shipment endpoint exists.
-func (a *DHLExpressAdapter) UpdateShipment(_ context.Context, _ UpdateRequest) (*UpdateResponse, error) {
-	return nil, notSupported("DHL Express", "update shipment", "contact DHL Express customer service")
+// UpdateShipment adds a new package to a DHL Express shipment via
+// PATCH /shipments/{id}/add-piece — the only shipment-update capability the
+// MyDHL API exposes, and only usable before the shipment has been picked up.
+// DHL gates access to this endpoint per account; a 403 means it needs to be
+// enabled by your DHL Express representative.
+//
+// Only req.AddPiece is honoured. ReceiverPhone, ReceiverEmail, Weight, and
+// ServicePointID are not supported by any DHL Express endpoint — DHL
+// recommends cancelling and rebooking for changes beyond adding a piece.
+func (a *DHLExpressAdapter) UpdateShipment(ctx context.Context, req UpdateRequest) (*UpdateResponse, error) {
+	if req.TrackingNumber == "" {
+		return nil, fmt.Errorf("tracking number must not be empty")
+	}
+	if req.AddPiece == nil {
+		return nil, notSupported("DHL Express", "update shipment",
+			"only adding a new package pre-pickup is supported, via PATCH /shipments/{id}/add-piece — set UpdateRequest.AddPiece; cancel and rebook for other changes")
+	}
+	if req.AddPiece.Weight <= 0 {
+		return nil, fmt.Errorf("DHL Express add-piece: weight must be greater than zero")
+	}
+
+	pkg := map[string]any{
+		"weight": req.AddPiece.Weight,
+	}
+	if req.AddPiece.Dimensions.Length > 0 || req.AddPiece.Dimensions.Width > 0 || req.AddPiece.Dimensions.Height > 0 {
+		pkg["dimensions"] = map[string]any{
+			"length": req.AddPiece.Dimensions.Length,
+			"width":  req.AddPiece.Dimensions.Width,
+			"height": req.AddPiece.Dimensions.Height,
+		}
+	}
+	if req.AddPiece.Reference != "" {
+		pkg["customerReferences"] = []any{
+			map[string]any{"typeCode": "CU", "value": req.AddPiece.Reference},
+		}
+	}
+	if req.AddPiece.Description != "" {
+		pkg["description"] = req.AddPiece.Description
+	}
+
+	// originalPlannedShippingDate must match the date supplied on the
+	// original BookShipment call. The gateway is stateless and does not
+	// persist it, so callers should pass it back via
+	// AddPiece.OriginalPlannedShippingDate; falling back to today's date is
+	// best-effort only and DHL Express may reject it if it doesn't match.
+	plannedDate := req.AddPiece.OriginalPlannedShippingDate
+	if plannedDate == "" {
+		plannedDate = time.Now().UTC().Format("2006-01-02")
+	}
+
+	// productCode is not tracked from the original booking either; this
+	// falls back to the account's default product code, which may not match
+	// a return shipment booked with ReturnProductCode.
+	payload := map[string]any{
+		"originalPlannedShippingDate": plannedDate,
+		"productCode":                 a.DefaultProductCode,
+		"accounts": []any{
+			map[string]any{"typeCode": "shipper", "number": a.AccountNumber},
+		},
+		"content": map[string]any{
+			"packages": []any{pkg},
+		},
+		"getRateEstimates": false,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal DHL Express add-piece request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/shipments/%s/add-piece", a.BaseURL, req.TrackingNumber)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DHL Express add-piece request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	// 200 response carries no body ("Shipment updated.") — success is
+	// determined entirely by status code.
+	if _, err := a.doRequest(httpReq); err != nil {
+		return nil, fmt.Errorf("DHL Express add-piece failed: %w", err)
+	}
+
+	return &UpdateResponse{
+		TrackingNumber: req.TrackingNumber,
+		Carrier:        "dhl_express",
+		Status:         "updated",
+		UpdatedFields:  []string{"addPiece"},
+	}, nil
 }

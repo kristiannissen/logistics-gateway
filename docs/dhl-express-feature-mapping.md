@@ -4,24 +4,30 @@ API: **MyDHL API v3.3.0**
 Base URL (prod): `https://express.api.dhl.com/mydhlapi`
 Auth: HTTP Basic (username + password)
 Coverage: Worldwide — express international and domestic.
-Implementation status: **Partial** — Cancel and update are confirmed carrier
-limitations (no void/update AWB endpoint in the MyDHL API), so all primary
-methods are complete. The remaining gap is secondary: standalone pickup
-update/cancel exist in the MyDHL API (`PATCH /pickups`, `DELETE /pickups/{id}`)
-but the adapter does not implement `ManifestAdapter` at all — a genuine
-implementation gap, corrected below (a previous version of this doc wrongly
+Implementation status: **Partial** — Cancel is a confirmed carrier limitation
+(no void/cancel AWB endpoint in the MyDHL API). Update was previously
+mis-credited as a full carrier limitation too, but the MyDHL API does expose
+`PATCH /shipments/{id}/add-piece` (add a new package pre-pickup) — that was a
+genuine implementation gap, now closed (see Update Shipment below). With that
+fixed, all primary methods are complete. The remaining gap is secondary:
+standalone pickup update/cancel exist in the MyDHL API (`PATCH /pickups`,
+`DELETE /pickups/{id}`) but the adapter does not implement `ManifestAdapter`
+at all — a genuine implementation gap (a previous version of this doc wrongly
 claimed these were wired).
 
 ---
 
 ## Summary
 
-DHL Express covers booking, tracking, label fetch, and return labels. Pickup is
-implicit in the booking call (a `dispatchConfirmationNumber` is returned), but
-standalone pickup update/cancel are not wired despite the MyDHL API supporting
-them. AWB cancellation is not available via the MyDHL API — the shipment
-cannot be voided after booking. Manifest retrieval is available post-collection
-via the image endpoint.
+DHL Express covers booking, tracking, label fetch, return labels, and — as of
+this update — adding a new package to an already-booked shipment pre-pickup
+(`add-piece`). Pickup is implicit in the booking call (a
+`dispatchConfirmationNumber` is returned), but standalone pickup update/cancel
+are not wired despite the MyDHL API supporting them. AWB cancellation is not
+available via the MyDHL API — the shipment cannot be voided after booking; the
+`DELETE /pickups/{id}` endpoint DHL exposes cancels the courier collection,
+not the shipment itself. Manifest retrieval is available post-collection via
+the image endpoint.
 
 ---
 
@@ -32,8 +38,8 @@ via the image endpoint.
 | Feature | Implemented | Notes |
 |---|---|---|
 | Book shipment | ✅ | `POST /shipments` — label returned inline in booking response |
-| Cancel shipment | ❌ | No void/cancel AWB endpoint in MyDHL API. Shipment cannot be voided after booking. |
-| Update shipment | ❌ | Not supported by MyDHL API |
+| Cancel shipment | ❌ | No void/cancel AWB endpoint in MyDHL API. Shipment cannot be voided after booking. `DELETE /pickups/{id}` exists but only cancels the courier collection, not the AWB. |
+| Update shipment | ⚠️ | Partial — `PATCH /shipments/{id}/add-piece` adds a new package pre-pickup (`UpdateRequest.AddPiece`). No general field-level update endpoint exists; DHL recommends cancel-and-rebook for anything else. Gated behind DHL account enablement. |
 | Idempotency key | ❌ | Client-side only |
 
 ### Labels
@@ -107,7 +113,7 @@ existing in the MyDHL API.
 |---|---|---|
 | `POST /api/bookings` | `POST /shipments` | ✅ |
 | `DELETE /api/bookings/{id}` | — | ❌ Not available → 501 |
-| `PATCH /api/bookings/{id}` | — | ❌ → 501 |
+| `PATCH /api/bookings/{id}` | `PATCH /shipments/{id}/add-piece` | ⚠️ Add-piece only (new package pre-pickup); other fields → 501 |
 | `GET /api/trackings/{id}` | `GET /shipments/{id}/tracking` | ✅ |
 | `GET /api/labels/{id}` | `GET /shipments/{id}/get-image` | ✅ |
 | `POST /api/pickups` | Implicit via booking | ⚠️ Standalone not wired |
@@ -143,3 +149,28 @@ from the AWB tracking number. Callers must store it at booking time.
 **Product code.** Defaults to `P` (EXPRESS WORLDWIDE). Override via the
 `DHL_EXPRESS_PRODUCT_CODE` environment variable. Return shipments use
 `DHL_EXPRESS_RETURN_PRODUCT_CODE`.
+
+**Add-piece update (`UpdateShipment`).** `PATCH /shipments/{id}/add-piece` is
+the only shipment-update capability the MyDHL API exposes, and only before
+the shipment has been picked up. Set `UpdateRequest.AddPiece` (weight,
+dimensions, reference, description); every other `UpdateRequest` field
+(contact details, weight-on-existing-package, service point) returns
+`ErrNotSupported` — DHL recommends cancelling and rebooking for anything
+beyond adding a piece. Two known limitations, both a consequence of the
+gateway being stateless:
+- **`originalPlannedShippingDate`** must match the date from the original
+  `BookShipment` call. The gateway does not persist it, so pass it back via
+  `AddPiece.OriginalPlannedShippingDate`; if omitted, the adapter falls back
+  to today's date on a best-effort basis, which DHL Express may reject.
+- **`productCode`** is not tracked from the original booking either, so the
+  request falls back to the account's default product code
+  (`DHL_EXPRESS_PRODUCT_CODE`), which may not match a return shipment booked
+  with `DHL_EXPRESS_RETURN_PRODUCT_CODE`.
+
+Access to `add-piece` is gated per DHL account — a 403 means it needs to be
+enabled by your DHL Express representative, not a bug in the adapter.
+
+The MyDHL API also documents `PATCH /shipments/{id}/upload-invoice-data`
+(revise customs invoice data pre-pickup). It is not wired — only `add-piece`
+has been confirmed against DHL's sandbox and implemented. Worth a follow-up
+once there's a concrete need to update customs data post-booking.

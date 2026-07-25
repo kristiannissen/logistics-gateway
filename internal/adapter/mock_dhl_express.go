@@ -85,7 +85,18 @@ func (m *MockDHLExpressAdapter) CancelShipment(_ context.Context, _ string) (*Ca
 	return nil, notSupported("DHL Express", "cancel shipment", "no void AWB endpoint; use DispatchConfirmationNumber to cancel the pickup booking via DELETE /pickups/{id}")
 }
 
-// UpdateShipment returns unsupported for DHL Express.
-func (m *MockDHLExpressAdapter) UpdateShipment(_ context.Context, _ UpdateRequest) (*UpdateResponse, error) {
-	return nil, notSupported("DHL Express", "update shipment", "contact DHL Express customer service")
+// UpdateShipment mocks adding a new package via add-piece. Only
+// req.AddPiece is supported, matching the real adapter; any other field
+// returns unsupported.
+func (m *MockDHLExpressAdapter) UpdateShipment(_ context.Context, req UpdateRequest) (*UpdateResponse, error) {
+	if req.AddPiece == nil {
+		return nil, notSupported("DHL Express", "update shipment",
+			"only adding a new package pre-pickup is supported, via PATCH /shipments/{id}/add-piece — set UpdateRequest.AddPiece; cancel and rebook for other changes")
+	}
+	return &UpdateResponse{
+		TrackingNumber: req.TrackingNumber,
+		Carrier:        "dhl_express",
+		Status:         "updated",
+		UpdatedFields:  []string{"addPiece"},
+	}, nil
 }

@@ -164,6 +164,33 @@ type UpdateRequest struct {
 	// If omitted, the adapter generates a new one on a best-effort basis,
 	// which PostNord's API may reject for an existing shipment.
 	CarrierMessageID string `json:"carrierMessageId,omitempty"`
+	// AddPiece requests adding a new package to an already-booked shipment.
+	// DHL Express only — forwarded to PATCH /shipments/{id}/add-piece. Only
+	// works before the shipment has been scanned into the DHL network, and
+	// DHL gates the endpoint behind account-level enablement.
+	AddPiece *AddPieceRequest `json:"addPiece,omitempty"`
+}
+
+// AddPieceRequest describes a new package to add to an already-booked DHL
+// Express shipment via PATCH /shipments/{id}/add-piece. DHL Express only.
+type AddPieceRequest struct {
+	// Weight is the new package's weight in kg. Required.
+	Weight float64 `json:"weight" validate:"gt=0"`
+	// Dimensions are the new package's physical dimensions in centimetres.
+	Dimensions Dimensions `json:"dimensions,omitempty"`
+	// Reference is an optional customer reference for the new package.
+	Reference string `json:"reference,omitempty"`
+	// Description is an optional free-text description of the new package's
+	// contents.
+	Description string `json:"description,omitempty"`
+	// OriginalPlannedShippingDate is the plannedShippingDateAndTime date
+	// (YYYY-MM-DD) from the original BookShipment call. DHL Express requires
+	// it to identify the shipment being amended. The gateway is stateless
+	// and does not persist the original booking, so callers should pass
+	// this back; if omitted, the adapter falls back to today's date on a
+	// best-effort basis, which DHL Express may reject if it doesn't match
+	// the original booking.
+	OriginalPlannedShippingDate string `json:"originalPlannedShippingDate,omitempty"`
 }
 
 // UpdateResponse is returned after a successful shipment update.
@@ -289,7 +316,10 @@ var capabilities = map[string]carrierCapabilities{
 	"fedex": {NativeIdempotency: false, Beta: false, SupportsCancellation: true, SupportsUpdate: false},
 	// DHL Express: cancel AWB is not available via API; pickup cancellation requires
 	// the dispatchConfirmationNumber from BookingResponse, not the AWB.
-	"dhl_express": {NativeIdempotency: false, Beta: true, SupportsCancellation: false, SupportsUpdate: false},
+	// dhl_express: update is genuinely partial — PATCH /shipments/{id}/add-piece
+	// lets a caller add a new package pre-pickup (gated behind DHL account
+	// enablement); no general update or cancel/void AWB endpoint exists.
+	"dhl_express": {NativeIdempotency: false, Beta: true, SupportsCancellation: false, SupportsUpdate: true},
 	// DHL eCommerce UK: booking, label, tracking, and cancellation are supported.
 	// No manifest API exists on the UK platform — CloseManifest returns ErrNotSupported.
 	// Cancellation requires the consignee postal code, cached at BookShipment time.
