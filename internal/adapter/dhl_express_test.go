@@ -17,7 +17,7 @@ import (
 // newDHLExpressTestServer spins up an httptest.Server shaped like the MyDHL
 // API and returns a DHLExpressAdapter pointed at it, along with the captured
 // request path, method, and JSON body of the last request handled.
-func newDHLExpressTestServer(t *testing.T, statusCode int, body string) (*DHLExpressAdapter, *http.Request, *map[string]any) {
+func newDHLExpressTestServer(t *testing.T, statusCode int, body string) (*DHLExpressAdapter, **http.Request, *map[string]any) {
 	t.Helper()
 
 	var captured map[string]any
@@ -41,7 +41,7 @@ func newDHLExpressTestServer(t *testing.T, statusCode int, body string) (*DHLExp
 	adapter.BaseURL = srv.URL
 	adapter.HTTPClient = srv.Client()
 
-	return adapter, lastReq, &captured
+	return adapter, &lastReq, &captured
 }
 
 // =========================================================================
@@ -69,9 +69,9 @@ func TestDHLExpressAdapter_UpdateShipment_AddPiece(t *testing.T) {
 		assert.Equal(t, "updated", resp.Status)
 		assert.Equal(t, []string{"addPiece"}, resp.UpdatedFields)
 
-		require.NotNil(t, lastReq)
-		assert.Equal(t, http.MethodPatch, lastReq.Method)
-		assert.Contains(t, lastReq.URL.Path, "/shipments/9356579890/add-piece")
+		require.NotNil(t, *lastReq)
+		assert.Equal(t, http.MethodPatch, (*lastReq).Method)
+		assert.Contains(t, (*lastReq).URL.Path, "/shipments/9356579890/add-piece")
 
 		payload := *captured
 		content, ok := payload["content"].(map[string]any)
