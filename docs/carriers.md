@@ -21,11 +21,11 @@ Status column reflects the current state of the gateway implementation:
 
 | Carrier | Key | Status | Notes |
 |---|---|---|---|
-| PostNord | `postnord` | Partial | Covers DK, SE, NO, FI under a single API key. BookShipment, CancelShipment, UpdateShipment (phone/email only, SE-only and now reuses `CarrierMessageID` from the original booking as PostNord's docs require), TrackShipment, FetchLabel implemented. BookPickup is now wired via `/v3/pickups/ids` (domestic SE, DK, FI only — NO is a confirmed limitation for this specific endpoint). UpdatePickup, CancelPickup, and CloseManifest are confirmed carrier limitations (no such endpoints exist). GetCutoffTime remains a genuine secondary gap — `/v4/sac/pickup/stopdate` exists but is not wired — so the carrier stays Partial rather than Production. |
+| PostNord | `postnord` | Production | Covers DK, SE, NO, FI under a single API key. BookShipment, CancelShipment, UpdateShipment (phone/email only, SE-only and now reuses `CarrierMessageID` from the original booking as PostNord's docs require), TrackShipment, FetchLabel implemented — all primary methods complete. BookPickup is now wired via `/v3/pickups/ids` (domestic SE, DK, FI only — NO is a confirmed limitation for this specific endpoint). UpdatePickup, CancelPickup, and CloseManifest are confirmed carrier limitations (no such endpoints exist). GetCutoffTime remains a genuine secondary gap — `/v4/sac/pickup/stopdate` exists but is not wired — but per CLAUDE.md, secondary-tier gaps no longer block Production. |
 | GLS Denmark | `gls` | Production | ShipIT API covers most of Europe — see GLS under Multi-country. |
 | DAO | `dao` | Implemented | Denmark-only parcel network. Strong home delivery coverage. |
 | DHL eCommerce Europe | `dhl_ecommerce` | Partial | BookShipment, TrackShipment, FetchLabel implemented. Cancel and update not supported via API — contact DHL customer service. |
-| DHL Express | `dhl_express` | Partial | BookShipment, TrackShipment, FetchLabel implemented. CancelShipment and UpdateShipment not supported via API. |
+| DHL Express | `dhl_express` | Production | BookShipment, TrackShipment, FetchLabel, and UpdateShipment (add-piece only) implemented — all primary methods complete. CancelShipment is a confirmed carrier limitation. Standalone pickup update/cancel exist in the MyDHL API but are not wired — a genuine secondary gap that no longer blocks Production. See Multi-country entry below for detail. |
 
 ---
 
@@ -41,7 +41,7 @@ Status column reflects the current state of the gateway implementation:
 
 | Carrier | Key | Status | Notes |
 |---|---|---|---|
-| PostNord Sweden | `postnord` | Partial | Same API and key as PostNord Denmark. Domestic pickup booking (`/v3/pickups/ids`) is supported here. |
+| PostNord Sweden | `postnord` | Production | Same API and key as PostNord Denmark. Domestic pickup booking (`/v3/pickups/ids`) is supported here. |
 
 ---
 
@@ -207,8 +207,8 @@ Carriers with a single API covering multiple European markets.
 | GLS | DE, DK, SE, NL, BE, FR, ES, PT, IT, AT, IE, HR, SI, SK, CZ, HU and more | `gls` | Production | ShipIT API v1. Single credentials, country selected by address. UpdateShipment is a confirmed carrier limitation (no update/modify/amend endpoint in the ShipIT v1 spec). Pickup scheduling (`sporadiccollection`, via `BookPickup`) and manifest close (`endofday`, via `CloseManifest`, operationally required) are now wired. `UpdatePickup`, `CancelPickup`, and `GetPickupAvailability` are confirmed carrier limitations — no such operations exist in the ShipIT API spec. No genuine implementation gaps remain. |
 | DPD | LT, LV, EE, DE, FR, NL, BE, AT, PL, CZ, SK, HU, RO, BG, HR, SI and more | `dpd_{country}` | Partial | BookShipment and BookPickup implemented for Baltic markets. Other countries registered dynamically via `DPD_{COUNTRY}_API_TOKEN` env vars — adapter code works but individual country tokens must be configured. DPD UK, SEUR (ES), Cargus (RO), and BRT (IT) are separate entities within DPD Group and need distinct adapters. |
 | DHL eCommerce Europe | 28 European countries | `dhl_ecommerce` | Partial | eConnect API. BookShipment, TrackShipment, FetchLabel implemented. Cancel and update are confirmed carrier limitations (no such endpoints in eConnect). Remaining secondary gaps: pickup scheduling and manifest close status unconfirmed. |
-| DHL Express | Worldwide | `dhl_express` | Partial | MyDHL API. BookShipment, TrackShipment, FetchLabel implemented. CancelShipment and UpdateShipment are confirmed carrier limitations. Update/cancel pickup exist in the MyDHL API (`PATCH /pickups`, `DELETE /pickups/{id}`) but are not wired — a genuine secondary gap; the feature-mapping doc previously claimed these were done in error. |
-| FedEx | Worldwide | `fedex` | Partial | FedEx Ship API v1. BookShipment, BookPickup, CancelPickup, CloseManifest, GetPickupAvailability implemented. FetchLabel reprint is a genuine secondary implementation gap (endpoint exists, spec review still pending). UpdateShipment is a confirmed carrier limitation. |
+| DHL Express | Worldwide | `dhl_express` | Production | MyDHL API. BookShipment, TrackShipment, FetchLabel, and UpdateShipment (`add-piece`, pre-pickup only) implemented — all primary methods complete. CancelShipment is a confirmed carrier limitation. Update/cancel pickup exist in the MyDHL API (`PATCH /pickups`, `DELETE /pickups/{id}`) but are not wired — a genuine secondary gap; the feature-mapping doc previously claimed these were done in error. Per CLAUDE.md, secondary-tier gaps no longer block Production. |
+| FedEx | Worldwide | `fedex` | Production | FedEx Ship API v1. BookShipment, BookPickup, CancelPickup, CloseManifest, GetPickupAvailability implemented — all primary methods complete. FetchLabel reprint is a genuine secondary implementation gap (endpoint exists, spec review still pending), which no longer blocks Production. UpdateShipment is a confirmed carrier limitation. |
 | InPost | PL (shipping + pickups + returns), IT + GB (returns) | `inpost` | Implemented | InPost Group API 2025. BookShipment, FetchLabel, TrackShipment, BookPickup (PL), CancelPickup (PL), GetPickupByID, ListPickups, GetCutoffTime, BookReturn (PL/IT/GB), FetchReturnLabel, GetReturnShipment implemented. OAuth 2.1. CancelShipment and UpdateShipment return 501 (not supported by the API). |
 
 ---

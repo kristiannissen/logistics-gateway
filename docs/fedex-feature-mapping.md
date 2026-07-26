@@ -4,12 +4,12 @@ API: **FedEx Ship API v1 + Track API v1 + Pickup API v1 + Location Search API v1
 Base URL (prod): `https://apis.fedex.com`
 Auth: OAuth2 client credentials (clientID + clientSecret → Bearer token)
 Coverage: Worldwide.
-Implementation status: **Partial** — UpdateShipment is a confirmed carrier
+Implementation status: **Production** — UpdateShipment is a confirmed carrier
 limitation (not supported by the FedEx Ship API), so all primary methods are
 complete. FetchLabel is a genuine secondary implementation gap: labels are
 returned inline at booking, but the standalone reprint endpoint has not been
-wired pending spec review — this is what keeps FedEx at Partial rather than
-Production.
+wired pending spec review. Per CLAUDE.md, secondary-tier gaps no longer block
+Production, so this is tracked as a real gap without holding back the status.
 
 ---
 
@@ -137,9 +137,10 @@ unchanged to `CancelPickup`; do not attempt to parse it.
 
 ## Implementation notes
 
-**Status.** FedEx is out of Beta (`capabilities["fedex"].Beta = false`) since
-all primary methods are complete — it is classified Partial, not Production,
-because FetchLabel (a secondary method) is still a genuine implementation gap.
+**Status.** FedEx is out of Beta (`capabilities["fedex"].Beta = false`) and
+classified Production — all primary methods are complete. FetchLabel (a
+secondary method) is still a genuine implementation gap, but per CLAUDE.md's
+classification rule, secondary-tier gaps no longer affect the status label.
 
 **Label inline only.** Labels are returned as base64-encoded PDF inside the
 `BookShipment` response (`ColliResponse.LabelURL` as a data URI). The `FetchLabel`

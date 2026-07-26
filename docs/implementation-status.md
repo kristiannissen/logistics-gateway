@@ -9,18 +9,18 @@ feature mapping file in this folder with full detail.
 
 | Carrier | Status | Coverage | File |
 |---|---|---|---|
-| PostNord | Partial — all primary methods complete; BookPickup now wired; GetCutoffTime exists in the API but is not wired (remaining secondary gap) | DK, SE, NO, FI | [postnord-feature-mapping.md](postnord-feature-mapping.md) |
+| PostNord | Production — all primary methods complete; BookPickup now wired; GetCutoffTime exists in the API but is not wired — a genuine secondary gap, but secondary gaps no longer block Production (see CLAUDE.md) | DK, SE, NO, FI | [postnord-feature-mapping.md](postnord-feature-mapping.md) |
 | Bring | Implemented | NO, SE, DK, FI | [bring-feature-mapping.md](bring-feature-mapping.md) |
 | GLS | Production — all primary methods complete; pickup scheduling and manifest close are wired; remaining pickup update/cancel/availability gaps are confirmed carrier limitations | DE, DK, SE, NL, BE, FR, ES, PT, IT, AT + more | [gls-feature-mapping.md](gls-feature-mapping.md) |
 | GLS NL (regional) | Implemented — no genuine gaps remain once carrier limitations are excluded | NL, BE + other GLS national portals | [gls-nl-feature-mapping.md](gls-nl-feature-mapping.md) |
 | DAO | Implemented | DK only | [dao-feature-mapping.md](dao-feature-mapping.md) |
-| DHL Express | Partial — all primary methods complete; standalone pickup update/cancel exist in the API but are not wired | Worldwide | [dhl-express-feature-mapping.md](dhl-express-feature-mapping.md) |
+| DHL Express | Production — all primary methods complete; standalone pickup update/cancel exist in the API but are not wired — a genuine secondary gap that no longer blocks Production | Worldwide | [dhl-express-feature-mapping.md](dhl-express-feature-mapping.md) |
 | DHL eCommerce Europe | Partial — all primary methods complete (cancel/update are confirmed carrier limitations); pickup/manifest status unconfirmed | 28 European countries | [dhl-ecommerce-feature-mapping.md](dhl-ecommerce-feature-mapping.md) |
 | DPD | Not fully implemented yet (Beta) | Pan-European | [dpd-group-feature-mapping.md](dpd-group-feature-mapping.md) |
 | DPD NL | Implemented — no genuine gaps remain once carrier limitations are excluded; verify SOAP endpoint URLs against live WSDLs before go-live | NL | [dpd-nl-feature-mapping.md](dpd-nl-feature-mapping.md) |
 | DPD UK | Not fully implemented yet (Beta) — endpoints unconfirmed against the live API, not verified carrier limitations | GB | — |
 | Hermes Germany | Production — cancel/update are confirmed carrier limitations; BookPickup/CancelPickup/GetPickupByID/ListPickups now wired; remaining pickup/manifest gaps are confirmed carrier limitations | DE only | [hermes-feature-mapping.md](hermes-feature-mapping.md) |
-| FedEx | Partial — update is a confirmed carrier limitation; label reprint is a genuine gap pending spec review | Worldwide | [fedex-feature-mapping.md](fedex-feature-mapping.md) |
+| FedEx | Production — update is a confirmed carrier limitation; label reprint is a genuine secondary gap pending spec review, which no longer blocks Production | Worldwide | [fedex-feature-mapping.md](fedex-feature-mapping.md) |
 | Evri | Partial — booking and label retrieval only; tracking/cancel/update/pickup/manifest not offered by the Evri Classic API | GB | [evri-feature-mapping.md](evri-feature-mapping.md) |
 | DHL eCommerce UK | Not fully implemented yet (Beta) | GB | [dhl-ecommerce-feature-mapping.md](dhl-ecommerce-feature-mapping.md) |
 | Omniva | Implemented | EE, LV, LT | — |

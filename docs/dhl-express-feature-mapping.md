@@ -4,7 +4,7 @@ API: **MyDHL API v3.3.0**
 Base URL (prod): `https://express.api.dhl.com/mydhlapi`
 Auth: HTTP Basic (username + password)
 Coverage: Worldwide — express international and domestic.
-Implementation status: **Partial** — Cancel is a confirmed carrier limitation
+Implementation status: **Production** — Cancel is a confirmed carrier limitation
 (no void/cancel AWB endpoint in the MyDHL API). Update was previously
 mis-credited as a full carrier limitation too, but the MyDHL API does expose
 `PATCH /shipments/{id}/add-piece` (add a new package pre-pickup) — that was a
@@ -13,7 +13,8 @@ fixed, all primary methods are complete. The remaining gap is secondary:
 standalone pickup update/cancel exist in the MyDHL API (`PATCH /pickups`,
 `DELETE /pickups/{id}`) but the adapter does not implement `ManifestAdapter`
 at all — a genuine implementation gap (a previous version of this doc wrongly
-claimed these were wired).
+claimed these were wired). Per CLAUDE.md, secondary-tier gaps no longer block
+Production, so this gap is tracked without holding back the status label.
 
 ---
 

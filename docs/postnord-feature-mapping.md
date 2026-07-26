@@ -4,7 +4,7 @@ API: **PostNord Customer API**
 Base URL (prod): `https://api2.postnord.com`
 Auth: API key (query parameter `?apikey=`) + customer number + application ID
 Coverage: Denmark, Sweden, Norway, Finland — single API key across all four markets.
-Implementation status: **Partial** — all five core `CarrierAdapter` methods
+Implementation status: **Production** — all five core `CarrierAdapter` methods
 are live, so every primary method is complete. `internal/adapter/postnord.go`
 now also implements `ManifestAdapter`: BookPickup is wired via
 `/v3/pickups/ids` (domestic SE, DK, FI only — NO is a confirmed limitation
@@ -13,8 +13,10 @@ booking/tracking/labels). UpdatePickup, CancelPickup, CloseManifest, and
 GetPickupAvailability all return `ErrNotSupported` — no such endpoints exist
 in the PostNord API. The carrier does not yet implement `PickupQuerier`;
 `GetCutoffTime` is a genuine remaining secondary gap since
-`/v4/sac/pickup/stopdate` exists but is not wired — that gap is why the
-carrier stays **Partial** rather than reaching Production.
+`/v4/sac/pickup/stopdate` exists but is not wired — per CLAUDE.md, secondary-tier
+gaps (label retrieval, pickup scheduling) no longer block Production, so this
+gap is tracked as a real limitation for pre-flight cutoff checks without
+holding back the status label.
 
 ---
 
@@ -149,9 +151,9 @@ returns a single cutoff/stop date (not a slot list), which maps to
 `GetPickupAvailability` on `ManifestAdapter`. This adapter does not yet
 implement `PickupQuerier` at all, so `GetCutoffTime` remains unwired despite
 the endpoint existing — a genuine secondary gap, not a carrier limitation.
-This is the one remaining gap keeping PostNord at **Partial** instead of
-**Production** (all primary methods are complete, and every other secondary
-method is either wired or a confirmed limitation).
+Per CLAUDE.md's classification rule, secondary-tier gaps like this one no
+longer block Production — it's tracked here as a real, worth-fixing gap for
+pre-flight cutoff checks, not as something holding back the status label.
 
 **Multi-market.** The same API key works for DK, SE, NO, FI. Routing is
 determined by the sender/receiver country in the booking payload. No per-country
